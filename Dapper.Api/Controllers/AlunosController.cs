@@ -51,8 +51,22 @@ namespace Dapper.Api.Controllers
         public async Task<IActionResult> Put(int id, [FromBody] Aluno aluno)
         {
             using var connection = new SqlConnection(_connectionString);
-            var sql = "@UPDATE Alunos SET Nome = @Nome, Email = @Email, DataNascimento = @DataNascimento, Curso = @Curso, Turma = @Turma, Turno = @Turno WHERE Id = @id;";
-            var linhasAfetadas = await connection.ExecuteAsync(sql, new {id, aluno});
+            var sql = @"UPDATE Alunos SET Nome = @Nome, Email = @Email, DataNascimento = @DataNascimento, Ativo = @Ativo, Curso = @Curso, Turma = @Turma, Turno = @Turno WHERE Id = @id";
+            var linhasAfetadas = await connection
+                .ExecuteAsync(sql, new {id, aluno.Nome, aluno.Email, aluno.DataNascimento, aluno.Ativo, aluno.Curso, aluno.Turma, aluno.Turno});
+
+            if (linhasAfetadas == 0)
+                return NotFound();
+
+            return NoContent();
+        }
+
+        [HttpDelete("id", Name = "ExcluirAluno")]
+        public async Task<IActionResult> Delete(int id)
+        {
+            using var connection = new SqlConnection(_connectionString);
+            var sql = @"DELETE FROM Alunos WHERE Id = @id";
+            var linhasAfetadas = await connection.ExecuteAsync(sql, new { id });
 
             if (linhasAfetadas == 0)
                 return NotFound();
