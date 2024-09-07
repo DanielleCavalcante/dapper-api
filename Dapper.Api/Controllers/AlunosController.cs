@@ -1,6 +1,6 @@
 ﻿using Dapper.Api.Entities;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Data;
 using System.Data.SqlClient;
 
 namespace Dapper.Api.Controllers
@@ -23,13 +23,13 @@ namespace Dapper.Api.Controllers
         }
 
         [HttpGet("{id}", Name = "BuscarAlunoPorId")]
-        public async Task<IActionResult> Get(int id) 
+        public async Task<IActionResult> Get(int id)
         {
             using var connection = new SqlConnection(_connectionString);
             var aluno = await connection
-                .QueryFirstOrDefaultAsync<Aluno>("SELECT * FROM Alunos WHERE Id = @id", new {id});
+                .QueryFirstOrDefaultAsync<Aluno>("SELECT * FROM Alunos WHERE Id = @id", new { id });
 
-            if (aluno is null) 
+            if (aluno is null)
                 return NotFound();
 
             return Ok(aluno);
@@ -39,6 +39,12 @@ namespace Dapper.Api.Controllers
         public async Task<IActionResult> Post([FromBody] Aluno aluno)
         {
             using var connection = new SqlConnection(_connectionString);
+
+            if (await AlunoExiste(aluno.Email, connection))
+            {
+                return BadRequest(new { mensagem = "Aluno já existe!" });
+            }
+
             var sql = @"INSERT INTO Alunos (Nome, Email, DataNascimento, Ativo, DataCriacao, Curso,Turma, Turno)" +
                        "VALUES (@Nome, @Email, @DataNascimento, 1, GETDATE(), @Curso, @Turma, @Turno);" +
                        "SELECT CAST(SCOPE_IDENTITY() AS INT)";
@@ -53,7 +59,7 @@ namespace Dapper.Api.Controllers
             using var connection = new SqlConnection(_connectionString);
             var sql = @"UPDATE Alunos SET Nome = @Nome, Email = @Email, DataNascimento = @DataNascimento, Ativo = @Ativo, Curso = @Curso, Turma = @Turma, Turno = @Turno WHERE Id = @id";
             var linhasAfetadas = await connection
-                .ExecuteAsync(sql, new {id, aluno.Nome, aluno.Email, aluno.DataNascimento, aluno.Ativo, aluno.Curso, aluno.Turma, aluno.Turno});
+                .ExecuteAsync(sql, new { id, aluno.Nome, aluno.Email, aluno.DataNascimento, aluno.Ativo, aluno.Curso, aluno.Turma, aluno.Turno });
 
             if (linhasAfetadas == 0)
                 return NotFound();
@@ -72,6 +78,11 @@ namespace Dapper.Api.Controllers
                 return NotFound();
 
             return NoContent();
+        }
+
+        private static async Task<bool> AlunoExiste(string email, IDbConnection connection)
+        {
+            return await connection.QueryFirstOrDefaultAsync<bool>("SELECT 1 FROM Alunos WHERE Email = @email", new { email });
         }
     }
 }
